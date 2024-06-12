@@ -9,6 +9,11 @@ let sphere;
 let texCoord = [0, 0]
 let cam;
 let gui;
+let bkg;
+let wbc;
+let track;
+let texture;
+let txr;
 
 function deg2rad(angle) {
     return angle * Math.PI / 180;
@@ -116,11 +121,16 @@ function draw() {
     gl.uniform3fv(shProgram.iLightPos, [1 * cos(Date.now() * 0.001), 2 * sin(Date.now() * 0.001), 0]);
     gl.uniform2fv(shProgram.iTT, texCoord);
     gl.uniform1f(shProgram.iScale, document.getElementById('s').value);
-
+    gl.uniformMatrix4fv(shProgram.iModelViewProjectionMatrix, false, m4.identity());
+    gl.bindTexture(gl.TEXTURE_2D, txr);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, wbc);
+    bkg.Draw();
+    gl.clear(gl.DEPTH_BUFFER_BIT);
     cam.ApplyLeftFrustum();
     modelViewProjection = m4.multiply(cam.projection, m4.multiply(cam.modelview, matAccum1));
     gl.uniformMatrix4fv(shProgram.iModelViewProjectionMatrix, false, modelViewProjection);
     gl.colorMask(true, false, false, false);
+    gl.bindTexture(gl.TEXTURE_2D, texture);
     surface.Draw();
     gl.clear(gl.DEPTH_BUFFER_BIT);
 
@@ -277,8 +287,39 @@ function initGL() {
     surface.BufferData(...CreateSurfaceData());
     sphere = new Model()
     sphere.BufferData(...CreateSphereData())
+    bkg = new Model('Background');
+    let bkgVerts = getBkgVerts();
+    bkg.BufferData(bkgVerts, bkgVerts, bkgTxrs());
 
     gl.enable(gl.DEPTH_TEST);
+}
+
+function getBkgVerts() {
+    const verts = [
+        [-1, -1, 0],
+        [1, 1, 0],
+        [1, -1, 0],
+        [-1, 1, 0]
+    ]
+    const inds = [1, 0, 3, 0, 1, 2]
+    let vertexList = []
+    inds.forEach(i => {
+        vertexList.push(...verts[i])
+    })
+    return vertexList;
+}
+function bkgTxrs() {
+    const txrs = [
+        [1, 1],
+        [0, 0],
+        [0, 1],
+        [1, 0]]
+    const inds = [1, 0, 3, 0, 1, 2]
+    let textureList = []
+    inds.forEach(i => {
+        textureList.push(...txrs[i])
+    })
+    return textureList;
 }
 
 
@@ -318,6 +359,7 @@ function createProgram(gl, vShader, fShader) {
  * initialization function that will be called when the page has loaded
  */
 function init() {
+    AccessWbc()
     cam = new StereoCamera(10, 2, 1, 40, 0.1, 40);
     gui = new GUI();
     gui.add(cam, 'Convergence', 10, 500, 10)
@@ -347,12 +389,33 @@ function init() {
     }
 
     spaceball = new TrackballRotator(canvas, draw, 0);
+    CreateWbcTxr()
     LoadTexture()
     animation();
 }
 
+function CreateWbcTxr() {
+    txr = gl.createTexture();
+    gl.bindTexture(gl.TEXTURE_2D, txr);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+}
+
+function AccessWbc() {
+    wbc = document.createElement('video');
+    wbc.setAttribute('autoplay', true);
+    navigator.getUserMedia({ video: true, audio: false }, function (stream) {
+        wbc.srcObject = stream;
+        track = stream.getTracks()[0];
+    }, function (e) {
+        console.error('Rejected!', e);
+    });
+}
+
 function LoadTexture() {
-    let texture = gl.createTexture();
+    texture = gl.createTexture();
     gl.bindTexture(gl.TEXTURE_2D, texture);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
