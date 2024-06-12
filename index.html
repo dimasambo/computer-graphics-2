@@ -5,7 +5,7 @@
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
 
 
-    <title>PA#2</title>
+    <title>CGW</title>
     <style>
         body {
             background-color: #EEEEEE;
@@ -28,6 +28,13 @@
     <p id="message">Drag your mouse on the cube to rotate it.<br>
         (On a touch screen, you can use your finger.)</p>
 
+    <label for="bps">
+        Band-pass filter state handler
+    </label>
+    <input type="checkbox" name="bps" id="bps" checked><br><br>
+    <audio id="audioid" src="https://5fade639-57b9-48db-8eb3-e055c7465804-00-1ujorwj0rg3zv.janeway.replit.dev/zhyr.mp3"
+        crossorigin="anonymous" controls loop></audio>
+
     <label for="numStepsI">divs</label>
     <input type="range" name="numStepsI" id="numStepsI" min="2" max="100" step="1" value="30" onchange="changed()">
     <label for="r2">R2</label>
@@ -42,12 +49,9 @@
         <label for="c">Color of coaxial cylinders</label>
         <input type="color" name="c" id="c" value="#ffff00" onchange="draw()">
     </div>
-
     <div id="canvas-holder">
         <canvas width="600" height="600" id="webglcanvas" style="background-color:red"></canvas>
     </div>
-
-
 </body>
 
 </html>

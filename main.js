@@ -126,11 +126,20 @@ function draw() {
     gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, wbc);
     bkg.Draw();
     gl.clear(gl.DEPTH_BUFFER_BIT);
+    let pnrX = Math.sin(Date.now() * 0.0005)
+    let pnrY = Math.cos(Date.now() * 0.0005)
+    gl.bindTexture(gl.TEXTURE_2D, texture);
+    if (pnr) {
+        pnr.setPosition(pnrX, pnrY, 0);
+    }
+    gl.uniformMatrix4fv(shProgram.iModelViewProjectionMatrix, false, m4.translation(pnrX, pnrY, 0));
+    sphere.Draw();
     cam.ApplyLeftFrustum();
     modelViewProjection = m4.multiply(cam.projection, m4.multiply(cam.modelview, matAccum1));
     gl.uniformMatrix4fv(shProgram.iModelViewProjectionMatrix, false, modelViewProjection);
     gl.colorMask(true, false, false, false);
-    gl.bindTexture(gl.TEXTURE_2D, texture);
+
+
     surface.Draw();
     gl.clear(gl.DEPTH_BUFFER_BIT);
 
@@ -362,10 +371,12 @@ function init() {
     AccessWbc()
     cam = new StereoCamera(10, 2, 1, 40, 0.1, 40);
     gui = new GUI();
-    gui.add(cam, 'Convergence', 10, 500, 10)
-    gui.add(cam, 'EyeSeparation', 0, 15, 0.1)
-    gui.add(cam, 'FOV', 0, 2, 0.01)
-    gui.add(cam, 'NearClippingDistance', 0.1, 19, 0.1)
+    const camParam = gui.addFolder('Camera Parameters');
+    camParam.add(cam, 'Convergence', 10, 500, 10)
+    camParam.add(cam, 'EyeSeparation', 0, 15, 0.1)
+    camParam.add(cam, 'FOV', 0, 2, 0.01)
+    camParam.add(cam, 'NearClippingDistance', 0.1, 19, 0.1)
+
     let canvas;
     try {
         canvas = document.getElementById("webglcanvas");
@@ -387,6 +398,7 @@ function init() {
             "<p>Sorry, could not initialize the WebGL graphics context: " + e + "</p>";
         return;
     }
+    initCtx()
 
     spaceball = new TrackballRotator(canvas, draw, 0);
     CreateWbcTxr()
@@ -451,4 +463,45 @@ window.onkeydown = (e) => {
     else if (e.keyCode == 65) {
         texCoord[1] = Math.max(texCoord[1] - 0.01, 0);
     }
+}
+
+let ctx, audio, src, bps, pnr;
+
+function initCtx() {
+    audio = document.getElementById('audioid');
+
+    audio.addEventListener('play', () => {
+        if (!ctx) {
+            ctx = new AudioContext();
+            src = ctx.createMediaElementSource(audio);
+            pnr = ctx.createPanner();
+            bps = ctx.createBiquadFilter();
+            src.connect(pnr);
+            pnr.connect(bps);
+            bps.connect(ctx.destination);
+            bps.type = 'bandpass';
+            bps.frequency.value = 1111;
+            bps.Q.value = 1;
+            const audioParam = gui.addFolder('Audio Parameters');
+            audioParam.add(bps.frequency, 'value', 0, 20000, 1)
+            audioParam.add(bps.Q, 'value', 0, 1, 0.01)
+            ctx.resume();
+        }
+    })
+    audio.addEventListener('pause', () => {
+        console.log('pause');
+        ctx.resume();
+    })
+    const bpsEnabled = document.getElementById('bps');
+    bpsEnabled.addEventListener('change', function () {
+        if (bpsEnabled.checked) {
+            pnr.disconnect();
+            pnr.connect(bps);
+            bps.connect(ctx.destination);
+        } else {
+            pnr.disconnect();
+            pnr.connect(ctx.destination);
+        }
+    });
+    audio.play();
 }
